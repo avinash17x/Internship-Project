@@ -4,6 +4,11 @@ const multer = require("multer");
 const fs = require("fs");
 const { PDFParse } = require("pdf-parse"); // Text extraction in pdf
 const axios = require("axios");
+const {
+  extractSkills,
+  compareSkills,
+  calculateATSScore
+} = require("./services/atsService");
 
 const app = express(); // Creates a server
 
@@ -42,6 +47,22 @@ app.post("/api/resume/upload", upload.single("resume"), async (req, res) => {
     const result = await parser.getText();
 
     const resumeText = result.text;
+
+    const resumeSkills = extractSkills(resumeText);
+
+    const jobSkills = extractSkills(
+      jobDescription || ""
+    );
+
+    const skillComparison = compareSkills(
+      resumeSkills,
+      jobSkills
+    );
+
+    const atsScore = calculateATSScore(
+      skillComparison.matchedSkills,
+      jobSkills
+    );
 
     await parser.destroy();
 
@@ -150,11 +171,24 @@ Do not add information that is not present in the resume or job description.
     );
 
     res.json({
-      message: "Resume analyzed successfully",
-      fileName: req.file.originalname,
-      text: resumeText,
-      analysis: aiResponse.data.response
-    });
+    message: "Resume analyzed successfully",
+
+    fileName: req.file.originalname,
+
+    text: resumeText,
+
+    atsScore: atsScore,
+
+    resumeSkills: resumeSkills,
+
+    jobSkills: jobSkills,
+
+    matchedSkills: skillComparison.matchedSkills,
+
+    missingSkills: skillComparison.missingSkills,
+
+    analysis: aiResponse.data.response
+});
 
   } catch (error) {
     console.error("Resume processing error:", error);
