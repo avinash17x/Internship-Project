@@ -200,7 +200,6 @@ Do not add information that is not present in the resume or job description.
   }
 });
 
-const PORT = 5000;
 
 app.post("/api/ai/test", async (req, res) => {
   try {
@@ -226,6 +225,12 @@ app.post("/api/ai/test", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+const PORT = 5000;
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;

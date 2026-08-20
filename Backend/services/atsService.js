@@ -29,9 +29,14 @@ const knownSkills = [
 function extractSkills(text) {
     const normalizedText = text.toLowerCase();
 
-    const foundSkills = knownSkills.filter(skill =>
-        normalizedText.includes(skill.toLowerCase())
-    );
+    const foundSkills = knownSkills.filter(skill => {
+        const skillPattern = new RegExp(
+            `\\b${skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
+            "i"
+        );
+
+        return skillPattern.test(normalizedText);
+    });
 
     return [...new Set(foundSkills)];
 }
