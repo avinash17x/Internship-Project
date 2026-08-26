@@ -6,10 +6,13 @@ const { PDFParse } = require("pdf-parse");
 const axios = require("axios");
 
 const {
-  extractSkills,
   compareSkills,
   calculateATSScore
 } = require("./services/atsService");
+
+const {
+  extractSkillsWithAI
+} = require("./services/aiSkillService");
 
 /**
  * Express application used by the AI Resume Analyzer backend.
@@ -62,9 +65,11 @@ app.post("/api/resume/upload", upload.single("resume"), async (req, res) => {
 
     const resumeText = result.text;
 
-    const resumeSkills = extractSkills(resumeText);
+    const resumeSkills = await extractSkillsWithAI(
+      resumeText
+    );
 
-    const jobSkills = extractSkills(
+    const jobSkills = await extractSkillsWithAI(
       jobDescription || ""
     );
 

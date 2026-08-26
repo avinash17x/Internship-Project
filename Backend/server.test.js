@@ -7,10 +7,28 @@ jest.mock("pdf-parse", () => ({
     PDFParse: jest.fn()
 }));
 
+jest.mock("./services/aiSkillService", () => ({
+    extractSkillsWithAI: jest.fn()
+}));
+
+const {
+    extractSkillsWithAI
+} = require("./services/aiSkillService");
+
 const app = require("./server");
 
 let consoleErrorSpy;
 
+beforeEach(() => {
+    jest.clearAllMocks();
+});
+
+afterEach(() => {
+    if (consoleErrorSpy) {
+        consoleErrorSpy.mockRestore();
+        consoleErrorSpy = null;
+    }
+});
 
 describe("GET /", () => {
     test("should return backend health message", async () => {
@@ -29,7 +47,8 @@ describe("POST /api/ai/test", () => {
     test("should return AI response when Ollama succeeds", async () => {
         axios.post.mockResolvedValue({
             data: {
-                response: "An ATS scanner analyzes resumes for relevant skills."
+                response:
+                    "An ATS scanner analyzes resumes for relevant skills."
             }
         });
 
@@ -40,7 +59,8 @@ describe("POST /api/ai/test", () => {
 
         expect(response.body).toEqual({
             success: true,
-            response: "An ATS scanner analyzes resumes for relevant skills."
+            response:
+                "An ATS scanner analyzes resumes for relevant skills."
         });
 
         expect(axios.post).toHaveBeenCalled();
@@ -65,8 +85,6 @@ describe("POST /api/ai/test", () => {
             message: "Failed to communicate with Ollama",
             error: "Ollama is unavailable"
         });
-
-        consoleErrorSpy.mockRestore();
     });
 });
 
@@ -88,18 +106,43 @@ describe("POST /api/resume/upload", () => {
         PDFParse.mockImplementation(() => ({
             getText: jest.fn().mockResolvedValue({
                 text: `
-                Frontend Developer
-                JavaScript
-                React
-                Git
-            `
+                    Frontend Developer
+                    JavaScript
+                    React
+                    Git
+                `
             }),
             destroy: jest.fn().mockResolvedValue()
         }));
 
+        /*
+         * First AI call:
+         * Extract skills from the resume.
+         */
+        extractSkillsWithAI.mockResolvedValueOnce([
+            "JavaScript",
+            "React",
+            "Git"
+        ]);
+
+        /*
+         * Second AI call:
+         * Extract skills from the job description.
+         */
+        extractSkillsWithAI.mockResolvedValueOnce([
+            "JavaScript",
+            "React",
+            "Git"
+        ]);
+
+        /*
+         * Third AI call:
+         * Generate the final resume analysis.
+         */
         axios.post.mockResolvedValue({
             data: {
-                response: "Resume matches the required frontend skills."
+                response:
+                    "Resume matches the required frontend skills."
             }
         });
 
@@ -121,7 +164,9 @@ describe("POST /api/resume/upload", () => {
             "Resume analyzed successfully"
         );
 
-        expect(response.body.fileName).toBe("resume.pdf");
+        expect(response.body.fileName).toBe(
+            "resume.pdf"
+        );
 
         expect(response.body.resumeSkills).toEqual([
             "JavaScript",
@@ -148,6 +193,91 @@ describe("POST /api/resume/upload", () => {
         expect(response.body.analysis).toBe(
             "Resume matches the required frontend skills."
         );
+
+        expect(extractSkillsWithAI).toHaveBeenCalledTimes(2);
+
+        expect(axios.post).toHaveBeenCalledTimes(1);
+    });
+
+    test("should correctly identify missing skills", async () => {
+        const { PDFParse } = require("pdf-parse");
+
+        PDFParse.mockImplementation(() => ({
+            getText: jest.fn().mockResolvedValue({
+                text: `
+                    Frontend Developer
+                    JavaScript
+                    React
+                `
+            }),
+            destroy: jest.fn().mockResolvedValue()
+        }));
+
+        /*
+         * Resume skills.
+         */
+        extractSkillsWithAI.mockResolvedValueOnce([
+            "JavaScript",
+            "React"
+        ]);
+
+        /*
+         * Job description skills.
+         */
+        extractSkillsWithAI.mockResolvedValueOnce([
+            "JavaScript",
+            "React",
+            "TypeScript",
+            "Docker"
+        ]);
+
+        /*
+         * Final AI analysis.
+         */
+        axios.post.mockResolvedValue({
+            data: {
+                response:
+                    "The resume matches JavaScript and React but is missing TypeScript and Docker."
+            }
+        });
+
+        const response = await request(app)
+            .post("/api/resume/upload")
+            .field(
+                "jobDescription",
+                "Looking for JavaScript, React, TypeScript and Docker."
+            )
+            .attach(
+                "resume",
+                Buffer.from("fake PDF content"),
+                "resume.pdf"
+            );
+
+        expect(response.statusCode).toBe(200);
+
+        expect(response.body.resumeSkills).toEqual([
+            "JavaScript",
+            "React"
+        ]);
+
+        expect(response.body.jobSkills).toEqual([
+            "JavaScript",
+            "React",
+            "TypeScript",
+            "Docker"
+        ]);
+
+        expect(response.body.matchedSkills).toEqual([
+            "JavaScript",
+            "React"
+        ]);
+
+        expect(response.body.missingSkills).toEqual([
+            "TypeScript",
+            "Docker"
+        ]);
+
+        expect(response.body.atsScore).toBe(50);
     });
 
     test("should return 500 when PDF processing fails", async () => {
@@ -182,7 +312,5 @@ describe("POST /api/resume/upload", () => {
             message: "Failed to process resume",
             error: "PDF parsing failed"
         });
-
-        consoleErrorSpy.mockRestore();
     });
 });

@@ -1,103 +1,90 @@
-const knownSkills = [
-    "JavaScript",
-    "TypeScript",
-    "React",
-    "React.js",
-    "Redux",
-    "HTML",
-    "HTML5",
-    "CSS",
-    "CSS3",
-    "Tailwind CSS",
-    "Node.js",
-    "Express",
-    "MongoDB",
-    "MySQL",
-    "REST APIs",
-    "Git",
-    "GitHub",
-    "Docker",
-    "Jest",
-    "Cypress",
-    "Three.js",
-    "GSAP",
-    "Python",
-    "Java",
-    "C++"
-];
-
 /**
- * Extracts recognized skills from the provided text.
+ * Compares skills extracted by AI from a resume
+ * with skills extracted by AI from a job description.
  *
- * Skills are matched as complete words to prevent partial matches.
- * For example, "JavaScript" should not be detected as "Java".
+ * No predefined skill list is used.
  *
- * @param {string} text - Resume or job description text.
- * @returns {string[]} List of recognized skills found in the text.
- */
-function extractSkills(text) {
-    const normalizedText = text.toLowerCase();
-
-    const foundSkills = knownSkills.filter(skill => {
-        const skillPattern = new RegExp(
-            `\\b${skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
-            "i"
-        );
-
-        return skillPattern.test(normalizedText);
-    });
-
-    return [...new Set(foundSkills)];
-}
-
-/**
- * Compares the skills found in a resume with the skills
- * required by a job description.
- *
- * @param {string[]} resumeSkills - Skills found in the resume.
- * @param {string[]} jobSkills - Skills required by the job description.
+ * @param {string[]} resumeSkills - Skills extracted from the resume.
+ * @param {string[]} jobSkills - Skills extracted from the job description.
  * @returns {{
  *   matchedSkills: string[],
  *   missingSkills: string[]
- * }} Object containing matched and missing skills.
+ * }}
  */
 function compareSkills(resumeSkills, jobSkills) {
-    const matchedSkills = jobSkills.filter(skill =>
-        resumeSkills.includes(skill)
+    const normalizedResumeSkills = resumeSkills.map(skill =>
+        skill.trim().toLowerCase()
     );
 
-    const missingSkills = jobSkills.filter(skill =>
-        !resumeSkills.includes(skill)
-    );
+    const matchedSkills = [];
+    const missingSkills = [];
+
+    for (const jobSkill of jobSkills) {
+        const normalizedJobSkill = jobSkill.trim().toLowerCase();
+
+        const matchIndex = normalizedResumeSkills.indexOf(
+            normalizedJobSkill
+        );
+
+        if (matchIndex !== -1) {
+            matchedSkills.push(resumeSkills[matchIndex]);
+        } else {
+            missingSkills.push(jobSkill);
+        }
+    }
 
     return {
-        matchedSkills,
-        missingSkills
+        matchedSkills: [...new Set(matchedSkills)],
+        missingSkills: [...new Set(missingSkills)]
     };
 }
 
 /**
- * Calculates the ATS match score based on matched skills.
+ * Calculates the ATS match score.
  *
- * The score represents the percentage of required job skills
- * that are also present in the resume.
+ * The score represents the percentage of skills required
+ * by the job description that were also found in the resume.
  *
- * @param {string[]} matchedSkills - Skills present in both the resume and job description.
+ * @param {string[]} matchedSkills - Skills found in both texts.
  * @param {string[]} jobSkills - Skills required by the job description.
  * @returns {number} ATS score from 0 to 100.
  */
 function calculateATSScore(matchedSkills, jobSkills) {
-    if (jobSkills.length === 0) {
+    if (!Array.isArray(jobSkills) || jobSkills.length === 0) {
         return 0;
     }
 
-    const score = (matchedSkills.length / jobSkills.length) * 100;
+    if (!Array.isArray(matchedSkills)) {
+        return 0;
+    }
+
+    const uniqueJobSkills = [
+        ...new Set(
+            jobSkills
+                .map(skill => skill.trim().toLowerCase())
+                .filter(Boolean)
+        )
+    ];
+
+    const uniqueMatchedSkills = [
+        ...new Set(
+            matchedSkills
+                .map(skill => skill.trim().toLowerCase())
+                .filter(Boolean)
+        )
+    ];
+
+    const matchedCount = uniqueMatchedSkills.filter(skill =>
+        uniqueJobSkills.includes(skill)
+    ).length;
+
+    const score =
+        (matchedCount / uniqueJobSkills.length) * 100;
 
     return Math.round(score);
 }
 
 module.exports = {
-    extractSkills,
     compareSkills,
     calculateATSScore
 };
