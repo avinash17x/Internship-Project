@@ -3,13 +3,15 @@
  * with skills extracted by AI from a job description.
  *
  * No predefined skill list is used.
+ * The comparison works with whatever skills are returned
+ * by the AI extraction service.
  *
  * @param {string[]} resumeSkills - Skills extracted from the resume.
  * @param {string[]} jobSkills - Skills extracted from the job description.
  * @returns {{
  *   matchedSkills: string[],
  *   missingSkills: string[]
- * }}
+ * }} Object containing matched and missing skills.
  */
 function compareSkills(resumeSkills, jobSkills) {
     const normalizedResumeSkills = resumeSkills.map(skill =>
@@ -40,12 +42,15 @@ function compareSkills(resumeSkills, jobSkills) {
 }
 
 /**
- * Calculates the ATS match score.
+ * Calculates the ATS match score based on matched skills.
  *
- * The score represents the percentage of skills required
- * by the job description that were also found in the resume.
+ * The score represents the percentage of required job skills
+ * that are also present in the resume.
  *
- * @param {string[]} matchedSkills - Skills found in both texts.
+ * The calculation is deterministic and does not use AI.
+ *
+ * @param {string[]} matchedSkills - Skills found in both the resume
+ * and job description.
  * @param {string[]} jobSkills - Skills required by the job description.
  * @returns {number} ATS score from 0 to 100.
  */

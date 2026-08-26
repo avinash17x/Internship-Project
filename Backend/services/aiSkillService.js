@@ -1,13 +1,18 @@
 const axios = require("axios");
 
 /**
- * Extracts skills from text using Ollama AI.
+ * Extracts technical skills from text using Ollama AI.
  *
- * No predefined skill list is used.
+ * The function does not use a predefined list of skills.
  * The AI identifies skills directly from the supplied text.
  *
+ * Skills can include programming languages, frameworks,
+ * libraries, databases, cloud technologies, DevOps tools,
+ * testing tools, platforms, and other technical competencies.
+ *
  * @param {string} text - Resume or job description text.
- * @returns {Promise<string[]>} Extracted skills.
+ * @returns {Promise<string[]>} A promise resolving to an array
+ * of unique skills identified by the AI.
  */
 async function extractSkillsWithAI(text) {
     if (!text || !text.trim()) {
