@@ -2,34 +2,51 @@ const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
 const fs = require("fs");
-const { PDFParse } = require("pdf-parse"); // Text extraction in pdf
+const { PDFParse } = require("pdf-parse");
 const axios = require("axios");
+
 const {
-  extractSkills,
   compareSkills,
-  calculateATSScore
+  calculateDetailedATSScore
 } = require("./services/atsService");
 
-const app = express(); // Creates a server
+const {
+  extractSkillsWithAI
+} = require("./services/aiSkillService");
 
-app.use(cors()); // Allows the frontend and backend to communicate when they're running on different origins/ports.
+/**
+ * Express application used by the AI Resume Analyzer backend.
+ */
+const app = express();
+
+app.use(cors());
 app.use(express.json());
 
-const upload = multer({ // Handles the file upload from the frontend/Postman
+/**
+ * Multer configuration for storing uploaded resume files.
+ */
+const upload = multer({
   dest: "uploads/",
 });
 
-app.get("/", (req, res) => { // Health check -> Checks if backend is alive
+/**
+ * Health-check endpoint used to verify that the backend is running.
+ *
+ * @route GET /
+ */
+app.get("/", (req, res) => {
   res.json({
     message: "AI Resume Analyzer Backend is running!",
   });
 });
 
-
-// API to upload a pdf
+/**
+ * Uploads and analyzes a resume against a provided job description.
+ *
+ * @route POST /api/resume/upload
+ */
 app.post("/api/resume/upload", upload.single("resume"), async (req, res) => {
   try {
-    // req.file -> Uploaded file 
     if (!req.file) {
       return res.status(400).json({
         message: "No resume uploaded"
@@ -48,9 +65,11 @@ app.post("/api/resume/upload", upload.single("resume"), async (req, res) => {
 
     const resumeText = result.text;
 
-    const resumeSkills = extractSkills(resumeText);
+    const resumeSkills = await extractSkillsWithAI(
+      resumeText
+    );
 
-    const jobSkills = extractSkills(
+    const jobSkills = await extractSkillsWithAI(
       jobDescription || ""
     );
 
@@ -59,7 +78,9 @@ app.post("/api/resume/upload", upload.single("resume"), async (req, res) => {
       jobSkills
     );
 
-    const atsScore = calculateATSScore(
+    const atsResult = calculateDetailedATSScore(
+      resumeText,
+      jobDescription || "",
       skillComparison.matchedSkills,
       jobSkills
     );
@@ -171,24 +192,21 @@ Do not add information that is not present in the resume or job description.
     );
 
     res.json({
-    message: "Resume analyzed successfully",
-
-    fileName: req.file.originalname,
-
-    text: resumeText,
-
-    atsScore: atsScore,
-
-    resumeSkills: resumeSkills,
-
-    jobSkills: jobSkills,
-
-    matchedSkills: skillComparison.matchedSkills,
-
-    missingSkills: skillComparison.missingSkills,
-
-    analysis: aiResponse.data.response
-});
+      message: "Resume analyzed successfully",
+      fileName: req.file.originalname,
+      text: resumeText,
+      atsScore: atsResult.atsScore,
+      atsBreakdown: {
+        skillMatch: atsResult.skillMatch,
+        keywordMatch: atsResult.keywordMatch,
+        structure: atsResult.structure
+      },
+      resumeSkills: resumeSkills,
+      jobSkills: jobSkills,
+      matchedSkills: skillComparison.matchedSkills,
+      missingSkills: skillComparison.missingSkills,
+      analysis: aiResponse.data.response
+    });
 
   } catch (error) {
     console.error("Resume processing error:", error);
@@ -200,15 +218,21 @@ Do not add information that is not present in the resume or job description.
   }
 });
 
-const PORT = 5000;
-
+/**
+ * Tests communication between the backend and Ollama AI service.
+ *
+ * @route POST /api/ai/test
+ */
 app.post("/api/ai/test", async (req, res) => {
   try {
-    const response = await axios.post("http://localhost:11434/api/generate", {
-      model: "llama3.2:3b",
-      prompt: "Explain what an ATS resume scanner does in 3 short points.",
-      stream: false
-    });
+    const response = await axios.post(
+      "http://localhost:11434/api/generate",
+      {
+        model: "llama3.2:3b",
+        prompt: "Explain what an ATS resume scanner does in 3 short points.",
+        stream: false
+      }
+    );
 
     res.json({
       success: true,
@@ -226,6 +250,21 @@ app.post("/api/ai/test", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+/**
+ * Port used by the backend server.
+ */
+const PORT = 5000;
+
+/**
+ * Start the server only when this file is executed directly.
+ *
+ * This allows Jest to import the Express app without
+ * starting another server during tests.
+ */
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
