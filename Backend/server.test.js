@@ -188,7 +188,7 @@ describe("POST /api/resume/upload", () => {
 
         expect(response.body.missingSkills).toEqual([]);
 
-        expect(response.body.atsScore).toBe(100);
+        expect(response.body.atsScore).toBe(73);
 
         expect(response.body.analysis).toBe(
             "Resume matches the required frontend skills."
@@ -277,7 +277,7 @@ describe("POST /api/resume/upload", () => {
             "Docker"
         ]);
 
-        expect(response.body.atsScore).toBe(50);
+        expect(response.body.atsScore).toBe(40);
     });
 
     test("should return 500 when PDF processing fails", async () => {

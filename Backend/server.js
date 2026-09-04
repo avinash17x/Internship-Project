@@ -7,7 +7,7 @@ const axios = require("axios");
 
 const {
   compareSkills,
-  calculateATSScore
+  calculateDetailedATSScore
 } = require("./services/atsService");
 
 const {
@@ -78,7 +78,9 @@ app.post("/api/resume/upload", upload.single("resume"), async (req, res) => {
       jobSkills
     );
 
-    const atsScore = calculateATSScore(
+    const atsResult = calculateDetailedATSScore(
+      resumeText,
+      jobDescription || "",
       skillComparison.matchedSkills,
       jobSkills
     );
@@ -193,7 +195,12 @@ Do not add information that is not present in the resume or job description.
       message: "Resume analyzed successfully",
       fileName: req.file.originalname,
       text: resumeText,
-      atsScore: atsScore,
+      atsScore: atsResult.atsScore,
+      atsBreakdown: {
+        skillMatch: atsResult.skillMatch,
+        keywordMatch: atsResult.keywordMatch,
+        structure: atsResult.structure
+      },
       resumeSkills: resumeSkills,
       jobSkills: jobSkills,
       matchedSkills: skillComparison.matchedSkills,

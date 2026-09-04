@@ -283,12 +283,8 @@ function App() {
 
           <div className="mt-8">
 
-            <label className="block text-sm font-medium mb-2">
+            <label className="block text-md font-medium mb-2">
               Job description
-
-              <span className="text-[#6b74a8] ml-2">
-                Optional
-              </span>
             </label>
 
             <textarea
@@ -490,22 +486,46 @@ function App() {
                   Match breakdown
                 </h3>
 
-                <div className="flex flex-wrap gap-8 justify-center">
+                <div className="flex flex-wrap gap-10 justify-center">
 
                   <MiniRing
-                    value={Math.round(
-                      ((analysisResult.matchedSkills?.length || 0) /
-                        (analysisResult.jobSkills?.length || 1)) *
-                        100
-                    )}
-                    label="Skills matched"
+                    value={
+                      analysisResult.atsBreakdown?.skillMatch ??
+                      Math.round(
+                        ((analysisResult.matchedSkills?.length || 0) /
+                          (analysisResult.jobSkills?.length || 1)) *
+                          100
+                      )
+                    }
+                    label="Skill Match"
                   />
 
                   <MiniRing
-                    value={analysisResult.atsScore}
-                    label="ATS score"
+                    value={
+                      analysisResult.atsBreakdown?.keywordMatch ?? 0
+                    }
+                    label="Keyword Match"
                   />
 
+                  <MiniRing
+                    value={
+                      analysisResult.atsBreakdown?.structure ?? 0
+                    }
+                    label="Resume Structure"
+                  />
+
+                </div>
+
+                {/* Score explanation */}
+
+                <div className="mt-8 text-center text-sm text-[#8c93c4] leading-6">
+                  <p>
+                    Overall ATS score is calculated using:
+                  </p>
+
+                  <p className="mt-1">
+                    60% Skill Match + 25% Keyword Match + 15% Resume Structure
+                  </p>
                 </div>
 
               </section>
