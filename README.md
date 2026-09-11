@@ -30,19 +30,19 @@ The AI processing runs locally using **Ollama and Llama 3.2 3B**, avoiding depen
 
 Upload a PDF resume and provide the target job description.
 
-![Resume Upload](screenshots/Home.png)
+![Resume Upload](screenshot/Home.png)
 
 ### ATS Score & Skill Matching
 
 The analyzer generates an ATS score and clearly separates matching and missing skills.
 
-![ATS Analysis](screenshots/analysis-result.png)
+![ATS Analysis](screenshot/analysis-result.png)
 
 ### AI-Powered Resume Analysis
 
 The system generates a detailed analysis covering strengths, weaknesses, and suggestions.
 
-![AI Analysis](screenshots/ai-analysis.png)
+![AI Analysis](screenshot/ai-analysis.png)
 
 ---
 
