@@ -1,8 +1,8 @@
 const {
-    normalizeSkill,
-    compareSkills,
-    calculateATSScore,
-    calculateDetailedATSScore
+  normalizeSkill,
+  compareSkills,
+  calculateATSScore,
+  calculateDetailedATSScore
 } = require("./atsService");
 
 describe("normalizeSkill", () => {
@@ -21,6 +21,13 @@ describe("normalizeSkill", () => {
     test("should normalize ReactJS to React", () => {
         expect(normalizeSkill("ReactJS")).toBe("react");
     });
+
+    test("normalizes TypeScript proficiency variants", () => {
+        expect(normalizeSkill("TypeScript")).toBe("typescript");
+        expect(normalizeSkill("TypeScript (basic)")).toBe("typescript");
+        expect(normalizeSkill("typescript")).toBe("typescript");
+    });
+
 });
 
 describe("compareSkills", () => {

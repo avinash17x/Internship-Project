@@ -1,7 +1,8 @@
 const axios = require("axios");
 
 const {
-    extractSkillsWithAI
+  extractSkillsWithAI,
+  detectSkillsFromText
 } = require("./aiSkillService");
 
 jest.mock("axios");
@@ -94,4 +95,27 @@ describe("extractSkillsWithAI", () => {
         expect(result).toEqual([]);
     });
 
+});
+
+test("detects explicitly mentioned technical skills from text", () => {
+  const text = `
+    Frontend developer with experience in JavaScript,
+    TypeScript, React, HTML5, CSS3, Tailwind CSS,
+    Git, Docker, Node.js and MongoDB.
+  `;
+
+  const skills = detectSkillsFromText(text);
+
+  expect(skills).toEqual([
+    "JavaScript",
+    "TypeScript",
+    "React",
+    "HTML",
+    "CSS",
+    "Tailwind CSS",
+    "Git",
+    "Docker",
+    "Node.js",
+    "MongoDB"
+  ]);
 });

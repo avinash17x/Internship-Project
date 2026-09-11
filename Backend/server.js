@@ -11,7 +11,8 @@ const {
 } = require("./services/atsService");
 
 const {
-  extractSkillsWithAI
+  extractSkillsWithAI,
+  detectSkillsFromText
 } = require("./services/aiSkillService");
 
 /**
@@ -27,6 +28,13 @@ app.use(express.json());
  */
 const upload = multer({
   dest: "uploads/",
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === "application/pdf") {
+      cb(null, true);
+    } else {
+      cb(new Error("Only PDF files are allowed"));
+    }
+  }
 });
 
 /**
@@ -46,7 +54,11 @@ app.get("/", (req, res) => {
  * @route POST /api/resume/upload
  */
 app.post("/api/resume/upload", upload.single("resume"), async (req, res) => {
+  let uploadedFilePath;
+
   try {
+    uploadedFilePath = req.file?.path;
+
     if (!req.file) {
       return res.status(400).json({
         message: "No resume uploaded"
@@ -65,13 +77,25 @@ app.post("/api/resume/upload", upload.single("resume"), async (req, res) => {
 
     const resumeText = result.text;
 
-    const resumeSkills = await extractSkillsWithAI(
-      resumeText
-    );
+    const aiResumeSkills = await extractSkillsWithAI(resumeText);
+    const detectedResumeSkills = detectSkillsFromText(resumeText);
 
-    const jobSkills = await extractSkillsWithAI(
-      jobDescription || ""
-    );
+    const aiJobSkills = await extractSkillsWithAI(jobDescription);
+    const detectedJobSkills = detectSkillsFromText(jobDescription);
+
+    const resumeSkills = [
+      ...new Set([
+        ...aiResumeSkills,
+        ...detectedResumeSkills
+      ])
+    ];
+
+    const jobSkills = [
+      ...new Set([
+        ...aiJobSkills,
+        ...detectedJobSkills
+      ])
+    ];
 
     const skillComparison = compareSkills(
       resumeSkills,
@@ -88,53 +112,107 @@ app.post("/api/resume/upload", upload.single("resume"), async (req, res) => {
     await parser.destroy();
 
     const prompt = `
-You are a strict ATS resume analyzer.
 
-Your job is to compare ONLY the information explicitly present in the resume
-against the information explicitly required in the job description.
+You are a strict ATS resume analysis assistant.
+
+The backend has already calculated the ATS score and compared the resume
+skills with the job requirements.
+
+The backend results are the SINGLE SOURCE OF TRUTH.
 
 ====================
-STRICT RULES
+BACKEND RESULTS
 ====================
 
-1. NEVER invent information.
+Resume Skills:
+${JSON.stringify(resumeSkills)}
 
-2. NEVER assume a skill from a related skill.
-   Example:
+Job Required Skills:
+${JSON.stringify(jobSkills)}
+
+Matched Skills:
+${JSON.stringify(skillComparison.matchedSkills)}
+
+Missing Skills:
+${JSON.stringify(skillComparison.missingSkills)}
+
+ATS Score:
+${atsResult.atsScore}
+
+Skill Match Score:
+${atsResult.skillMatch}
+
+Keyword Match Score:
+${atsResult.keywordMatch}
+
+Structure Score:
+${atsResult.structure}
+
+====================
+ABSOLUTE RULES
+====================
+
+1. NEVER invent a skill, technology, framework, library, tool,
+   certification, requirement, experience, achievement, or qualification.
+
+2. Matching Skills MUST contain ONLY skills from the backend
+   Matched Skills list.
+
+3. Missing Skills MUST contain ONLY skills from the backend
+   Missing Skills list.
+
+4. NEVER move a skill between Matching Skills and Missing Skills.
+
+5. NEVER claim the candidate has a missing skill.
+
+6. NEVER evaluate the candidate against a requirement that is not present
+   in the backend Job Required Skills list.
+
+7. NEVER mention unrelated technologies when discussing weaknesses,
+   suggestions, or job fit.
+
+8. Do not infer one skill from another.
+
    React does NOT imply Redux.
-   REST APIs does NOT imply API testing.
    JavaScript does NOT imply TypeScript.
    TypeScript does NOT imply advanced TypeScript.
+   Git does NOT imply Docker.
+   REST APIs do NOT imply API testing.
 
-3. Only report a skill as present if it is explicitly written in the resume.
+9. Preserve proficiency levels exactly as provided.
 
-4. Preserve proficiency levels exactly.
-   Example:
-   "TypeScript (basic)" must be reported as "TypeScript (basic)".
+10. Do not invent work experience, responsibilities, achievements,
+    certifications, education, or technical experience.
 
-5. If a required skill is not explicitly present in the resume,
-   mark it as "Not mentioned".
+11. Strengths must be supported directly by the resume.
 
-6. Do NOT claim that a missing skill is something the candidate has.
+12. Weaknesses MUST be based ONLY on skills in the backend
+    Missing Skills list.
 
-7. Do NOT recommend adding a skill unless you clearly say:
-   "Add this only if you genuinely have the experience."
+13. Suggestions MUST address ONLY skills in the backend
+    Missing Skills list or actual resume improvements directly related
+    to the job requirements.
 
-8. Do NOT recommend certifications unless the job description explicitly
-   requires them.
+14. NEVER mention a technology unless it is relevant to the specific
+    section and supported by the backend results or resume.
 
-9. Do NOT recommend specific tools such as Jest, Enzyme, Redux, etc.
-   unless those tools appear in the job description or resume.
+15. If there are missing skills, do not claim the candidate should add
+    them unless the candidate genuinely has that experience.
 
-10. Do NOT infer proficiency from project complexity.
+16. Whenever recommending that a missing skill be added to the resume,
+    use this EXACT sentence:
 
-11. Do NOT infer experience from job titles.
+    "Add this only if you genuinely have the experience."
 
-12. Do NOT infer testing experience from Git or REST API experience.
+17. Do not recommend learning, adding, or using a technology that is NOT
+    present in the backend Job Required Skills list.
 
-13. Do NOT infer Redux experience from React experience.
+18. The ATS score and all individual scores MUST be reported exactly
+    as provided by the backend.
 
-14. Do NOT infer advanced TypeScript knowledge from TypeScript (basic).
+19. Do not recalculate, reinterpret, or modify any backend score.
+
+20. Do not explain what the individual ATS sub-scores mathematically mean.
 
 ====================
 RESUME
@@ -149,47 +227,179 @@ JOB DESCRIPTION
 ${jobDescription || "No job description provided."}
 
 ====================
-ANALYSIS
+REQUIRED OUTPUT
 ====================
 
-Provide:
+Provide EXACTLY these six sections and no additional sections:
 
-1. Overall assessment
-2. Matching skills
-3. Missing skills
-4. Strengths
-5. Weaknesses
-6. Specific improvement suggestions
+**Overall Assessment**
 
-For MATCHING SKILLS:
-Only include skills explicitly present in both the resume and job description.
+Briefly explain how well the resume matches the job requirements.
 
-For MISSING SKILLS:
-Only include skills explicitly required by the job description but not explicitly
-mentioned in the resume.
+Mention the ATS score and the three backend sub-scores exactly as provided:
 
-For STRENGTHS:
-Use only evidence from the resume.
+- Skill Match Score
+- Keyword Match Score
+- Structure Score
 
-For WEAKNESSES:
-Only identify gaps that can be supported by comparing the resume and job description.
+Do not reinterpret or recalculate these scores.
 
-For SUGGESTIONS:
-Make suggestions actionable, but never assume the candidate has a missing skill.
-If recommending that a missing skill be added to the resume, say:
+**Matching Skills**
+
+List ONLY skills from the backend Matched Skills list.
+
+**Missing Skills**
+
+List ONLY skills from the backend Missing Skills list.
+
+If there are no missing skills, say exactly:
+
+"No major skill gaps identified."
+
+**Strengths**
+
+List 3 to 5 strengths supported directly by the resume.
+
+Do not introduce unrelated job requirements.
+
+Do not invent experience or achievements.
+
+**Weaknesses**
+
+Discuss ONLY skills from the backend Missing Skills list.
+
+Do not mention any other technology, skill, requirement, or weakness.
+
+If there are no missing skills, say exactly:
+
+"No major weaknesses identified based on the provided job requirements."
+
+**Suggestions**
+
+Give practical resume improvement suggestions based ONLY on the
+backend Missing Skills list and the actual job requirements.
+
+If there are missing skills:
+
+- Create EXACTLY one bullet for each item in the backend Missing Skills list.
+- Use the exact missing skill name from the backend Missing Skills list.
+- Do not add unrelated technologies.
+- Do not recommend courses, workshops, tutorials, or learning resources.
+- Do not tell the candidate to learn the skill.
+- Do not claim the candidate has experience with the skill.
+- Do not suggest adding the skill unless the candidate genuinely has
+  that experience.
+- If suggesting that the skill be added to the resume, use this EXACT
+  sentence:
+
 "Add this only if you genuinely have the experience."
 
-Do not add information that is not present in the resume or job description.
+- Do not change, shorten, or paraphrase that sentence.
+- Do not add any other recommendation for that missing skill.
+- Do not say:
+  "No additional skill-related suggestions are necessary."
+
+If there are no missing skills, say exactly:
+
+"No additional skill-related suggestions are necessary."
+
+====================
+FINAL VALIDATION
+====================
+
+Before producing the answer, perform all of the following checks:
+
+CHECK 1:
+Every Matching Skill exists in the backend Matched Skills list.
+
+CHECK 2:
+Every Missing Skill exists in the backend Missing Skills list.
+
+CHECK 3:
+Matching Skills and Missing Skills do not overlap.
+
+CHECK 4:
+Weaknesses mention ONLY backend Missing Skills.
+
+CHECK 5:
+Suggestions mention ONLY actual job requirements and actual gaps.
+
+CHECK 6:
+Do not introduce unrelated technologies.
+
+CHECK 7:
+Do not claim the candidate has a missing skill.
+
+CHECK 8:
+Do not change the ATS score.
+
+CHECK 9:
+Do not change any ATS sub-score.
+
+CHECK 10:
+The response contains EXACTLY these six sections:
+Overall Assessment
+Matching Skills
+Missing Skills
+Strengths
+Weaknesses
+Suggestions
+
+CHECK 11:
+If Missing Skills contains one or more skills, Suggestions must contain
+exactly one bullet for each missing skill.
+
+CHECK 12:
+If Missing Skills is empty, Suggestions must contain exactly:
+"No additional skill-related suggestions are necessary."
+
+CHECK 13:
+The sentence
+"Add this only if you genuinely have the experience."
+must NEVER be paraphrased.
+
+If any statement violates these rules, remove or rewrite it before
+producing the final answer.
+
 `;
 
     const aiResponse = await axios.post(
-      "http://localhost:11434/api/generate",
+      `${process.env.OLLAMA_URL || "http://localhost:11434"}/api/generate`,
       {
         model: "llama3.2:3b",
         prompt: prompt,
         stream: false
       }
     );
+
+    // Generate deterministic suggestions from backend missing skills.
+    // Do not allow the AI to invent or add extra suggestions.
+    const deterministicSuggestions =
+      skillComparison.missingSkills.length > 0
+        ? skillComparison.missingSkills
+          .map(
+            (skill) =>
+              `- ${skill}: Add this only if you genuinely have the experience.`
+          )
+          .join("\n")
+        : "No additional skill-related suggestions are necessary.";
+
+    // Replace the AI-generated Suggestions section with the
+    // backend-controlled deterministic version.
+    let finalAnalysis = aiResponse.data.response;
+
+    const suggestionsHeading = "**Suggestions**";
+
+    if (finalAnalysis.includes(suggestionsHeading)) {
+      finalAnalysis =
+        finalAnalysis.split(suggestionsHeading)[0] +
+        suggestionsHeading +
+        "\n\n" +
+        deterministicSuggestions;
+    } else {
+      finalAnalysis +=
+        `\n\n${suggestionsHeading}\n\n${deterministicSuggestions}`;
+    }
 
     res.json({
       message: "Resume analyzed successfully",
@@ -205,7 +415,7 @@ Do not add information that is not present in the resume or job description.
       jobSkills: jobSkills,
       matchedSkills: skillComparison.matchedSkills,
       missingSkills: skillComparison.missingSkills,
-      analysis: aiResponse.data.response
+      analysis: finalAnalysis
     });
 
   } catch (error) {
@@ -215,7 +425,32 @@ Do not add information that is not present in the resume or job description.
       message: "Failed to process resume",
       error: error.message
     });
+  } finally {
+    if (uploadedFilePath) {
+      try {
+        await fs.promises.unlink(uploadedFilePath);
+      } catch (cleanupError) {
+        console.error(
+          "Failed to delete uploaded resume:",
+          cleanupError.message
+        );
+      }
+    }
   }
+});
+
+app.use((error, req, res, next) => {
+  if (error.message === "Only PDF files are allowed") {
+    return res.status(400).json({
+      message: error.message
+    });
+  }
+
+  console.error("Unhandled server error:", error);
+
+  res.status(500).json({
+    message: "Internal server error"
+  });
 });
 
 /**
@@ -226,7 +461,7 @@ Do not add information that is not present in the resume or job description.
 app.post("/api/ai/test", async (req, res) => {
   try {
     const response = await axios.post(
-      "http://localhost:11434/api/generate",
+      `${process.env.OLLAMA_URL || "http://localhost:11434"}/api/generate`,
       {
         model: "llama3.2:3b",
         prompt: "Explain what an ATS resume scanner does in 3 short points.",
