@@ -76,3 +76,26 @@ HTML5     → HTML
 CSS3      → CSS
 NodeJS    → Node.js
 Mongo DB  → MongoDB
+
+---
+
+## How to Run
+
+Follow the steps below to run ATSense on a Windows computer.
+
+### Prerequisites
+
+Make sure the following software is installed:
+
+- Git
+- Node.js 20 or later
+- Docker Desktop
+- Ollama
+
+Verify the installations:
+
+```powershell
+git --version
+node --version
+docker --version
+ollama --version
