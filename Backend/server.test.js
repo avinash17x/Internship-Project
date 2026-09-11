@@ -8,7 +8,8 @@ jest.mock("pdf-parse", () => ({
 }));
 
 jest.mock("./services/aiSkillService", () => ({
-    extractSkillsWithAI: jest.fn()
+    extractSkillsWithAI: jest.fn(),
+    detectSkillsFromText: jest.fn(() => [])
 }));
 
 const {
@@ -190,8 +191,16 @@ describe("POST /api/resume/upload", () => {
 
         expect(response.body.atsScore).toBe(73);
 
-        expect(response.body.analysis).toBe(
+        expect(response.body.analysis).toContain(
             "Resume matches the required frontend skills."
+        );
+
+        expect(response.body.analysis).toContain(
+            "**Suggestions**"
+        );
+
+        expect(response.body.analysis).toContain(
+            "No additional skill-related suggestions are necessary."
         );
 
         expect(extractSkillsWithAI).toHaveBeenCalledTimes(2);
@@ -313,4 +322,19 @@ describe("POST /api/resume/upload", () => {
             error: "PDF parsing failed"
         });
     });
+});
+
+test("rejects non-PDF resume uploads", async () => {
+    const response = await request(app)
+        .post("/api/resume/upload")
+        .attach("resume", Buffer.from("This is not a PDF"), {
+            filename: "resume.txt",
+            contentType: "text/plain"
+        });
+
+    expect(response.statusCode).toBe(400);
+
+    expect(response.body.message).toBe(
+        "Only PDF files are allowed"
+    );
 });

@@ -72,7 +72,7 @@ ${text}
 
     try {
         const response = await axios.post(
-            "http://localhost:11434/api/generate",
+            `${process.env.OLLAMA_URL || "http://localhost:11434"}/api/generate`,
             {
                 model: "llama3.2:3b",
                 prompt,
@@ -137,6 +137,40 @@ ${text}
     }
 }
 
+function detectSkillsFromText(text) {
+  if (typeof text !== "string" || !text.trim()) {
+    return [];
+  }
+
+  const skillPatterns = [
+    { skill: "JavaScript", pattern: /\bjavascript\b/i },
+    { skill: "TypeScript", pattern: /\btypescript\b/i },
+    { skill: "React", pattern: /\breact(?:\.js|js)?\b/i },
+    { skill: "HTML", pattern: /\bhtml5?\b/i },
+    { skill: "CSS", pattern: /\bcss3?\b/i },
+    { skill: "Tailwind CSS", pattern: /\btailwind\s*css\b|\btailwindcss\b/i },
+    { skill: "Git", pattern: /\bgit\b/i },
+    { skill: "Docker", pattern: /\bdocker\b/i },
+    { skill: "Node.js", pattern: /\bnode(?:\.js|js)\b/i },
+    { skill: "Express", pattern: /\bexpress(?:\.js|js)?\b/i },
+    { skill: "MongoDB", pattern: /\bmongodb\b|\bmongo\s*db\b/i },
+    { skill: "Python", pattern: /\bpython\b/i },
+    { skill: "Java", pattern: /\bjava\b/i },
+    { skill: "C++", pattern: /\bc\+\+\b/i },
+    { skill: "SQL", pattern: /\bsql\b/i },
+    { skill: "GitHub", pattern: /\bgithub\b/i },
+    { skill: "Vite", pattern: /\bvite\b/i },
+    { skill: "Three.js", pattern: /\bthree\.js\b|\bthreejs\b/i },
+    { skill: "GSAP", pattern: /\bgsap\b/i },
+    { skill: "Vercel", pattern: /\bvercel\b/i }
+  ];
+
+  return skillPatterns
+    .filter(({ pattern }) => pattern.test(text))
+    .map(({ skill }) => skill);
+}
+
 module.exports = {
-    extractSkillsWithAI
+  extractSkillsWithAI,
+  detectSkillsFromText
 };
