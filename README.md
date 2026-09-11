@@ -101,12 +101,9 @@ node --version
 docker --version
 ollama --version
 ```
-### 1. Clone the Repository
-
-```powershell
+1. Clone the Repository
 git clone https://github.com/avinash17x/Internship-Project.git
 cd Internship-Project
-
 2. Install the Ollama Model
 
 ATSense uses Llama 3.2 3B through Ollama.
@@ -160,5 +157,3 @@ Once all three services are running, open:
 http://localhost:5173
 
 Upload a PDF resume, enter the job description, and start the analysis.
-
-
