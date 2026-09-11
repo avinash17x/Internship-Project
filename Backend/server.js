@@ -6,6 +6,7 @@ const { PDFParse } = require("pdf-parse");
 const axios = require("axios");
 
 const {
+  normalizeSkill,
   compareSkills,
   calculateDetailedATSScore
 } = require("./services/atsService");
@@ -83,19 +84,40 @@ app.post("/api/resume/upload", upload.single("resume"), async (req, res) => {
     const aiJobSkills = await extractSkillsWithAI(jobDescription);
     const detectedJobSkills = detectSkillsFromText(jobDescription);
 
-    const resumeSkills = [
-      ...new Set([
-        ...aiResumeSkills,
-        ...detectedResumeSkills
-      ])
-    ];
+    function uniqueSkillsByNormalization(skills) {
+      const seen = new Set();
 
-    const jobSkills = [
-      ...new Set([
-        ...aiJobSkills,
-        ...detectedJobSkills
-      ])
-    ];
+      return skills.filter((skill) => {
+        if (typeof skill !== "string") {
+          return false;
+        }
+
+        const trimmedSkill = skill.trim();
+
+        if (!trimmedSkill) {
+          return false;
+        }
+
+        const normalizedSkill = normalizeSkill(trimmedSkill);
+
+        if (!normalizedSkill || seen.has(normalizedSkill)) {
+          return false;
+        }
+
+        seen.add(normalizedSkill);
+        return true;
+      });
+    }
+
+    const resumeSkills = uniqueSkillsByNormalization([
+      ...aiResumeSkills,
+      ...detectedResumeSkills
+    ]);
+
+    const jobSkills = uniqueSkillsByNormalization([
+      ...aiJobSkills,
+      ...detectedJobSkills
+    ]);
 
     const skillComparison = compareSkills(
       resumeSkills,
