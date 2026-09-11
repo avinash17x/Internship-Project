@@ -1,85 +1,78 @@
-# AI Resume Analyzer
+# ATSense — AI Resume Analyzer
 
-An AI-powered resume analysis system that compares a candidate's resume with a job description and generates an ATS-style compatibility score and detailed feedback.
-
-The system uses **Ollama + Llama** to intelligently extract technical skills from both the resume and job description. It does not rely on a predefined list of skills.
+> An AI-powered resume analysis platform that evaluates resumes against job descriptions, calculates an ATS compatibility score, identifies matching and missing skills, and provides actionable AI-generated feedback.
 
 ---
 
 ## Overview
 
-The AI Resume Analyzer helps candidates understand how well their resume matches a specific job description.
+**ATSense** is a full-stack AI Resume Analyzer built to help job seekers understand how well their resume matches a specific job description.
 
-The application:
+The application combines deterministic resume analysis with local AI processing to provide:
 
-- Accepts a PDF resume.
-- Extracts text from the resume.
-- Uses AI to identify technical skills from the resume.
-- Uses AI to identify required technical skills from the job description.
-- Compares the extracted skills.
-- Calculates an ATS compatibility score.
-- Uses AI to generate detailed resume feedback.
-- Identifies matching skills and missing skills.
-- Provides strengths, weaknesses, and improvement suggestions.
+- ATS compatibility scoring
+- Resume skill extraction
+- Job-description skill extraction
+- Matching skill detection
+- Missing skill detection
+- Resume structure analysis
+- Keyword matching
+- AI-generated strengths and weaknesses
+- Actionable resume suggestions
+
+The AI processing runs locally using **Ollama and Llama 3.2 3B**, avoiding dependency on paid cloud AI APIs.
 
 ---
 
-## System Architecture
+## Screenshots
+
+### Resume Upload
+
+Upload a PDF resume and provide the target job description.
+
+![Resume Upload](screenshots/Home.png)
+
+### ATS Score & Skill Matching
+
+The analyzer generates an ATS score and clearly separates matching and missing skills.
+
+![ATS Analysis](screenshots/analysis-result.png)
+
+### AI-Powered Resume Analysis
+
+The system generates a detailed analysis covering strengths, weaknesses, and suggestions.
+
+![AI Analysis](screenshots/ai-analysis.png)
+
+---
+
+## Key Features
+
+### Resume Processing
+
+- PDF resume upload
+- PDF text extraction
+- PDF-only file validation
+- Automatic resume content analysis
+
+### AI-Powered Skill Extraction
+
+- Extracts technical skills from resumes
+- Extracts required skills from job descriptions
+- Uses local LLM processing through Ollama
+- Prevents unsupported skill inference
+- Handles duplicate skills
+
+### Skill Matching
+
+The system compares resume skills against job requirements using normalized skill names.
+
+Examples:
 
 ```text
-                    ┌──────────────┐
-                    │  Resume PDF  │
-                    └──────┬───────┘
-                           │
-                           ▼
-                  PDF Text Extraction
-                           │
-                           ▼
-                    ┌──────────────┐
-                    │    Ollama    │
-                    │    Llama     │
-                    └──────┬───────┘
-                           │
-                           ▼
-                AI Resume Skill Extraction
-                           │
-                           ▼
-                  Resume Structured Skills
-                           │
-                           │
-Job Description ───────────┤
-                           │
-                           ▼
-                    ┌──────────────┐
-                    │    Ollama    │
-                    │    Llama     │
-                    └──────┬───────┘
-                           │
-                           ▼
-                 AI Job Skill Extraction
-                           │
-                           ▼
-                    Required Skills
-                           │
-                           ▼
-                   Skill Comparison
-                           │
-                           ▼
-                    ATS Score Calculation
-                           │
-                           ▼
-                  ┌─────────────────┐
-                  │   ATS Score      │
-                  │      78%         │
-                  └─────────────────┘
-                           │
-                           ▼
-                    Ollama Analysis
-                           │
-                           ▼
-              ┌─────────────────────────┐
-              │ Strengths               │
-              │ Weaknesses              │
-              │ Missing Skills          │
-              │ Suggestions             │
-              └─────────────────────────┘
+React.js  → React
+ReactJS   → React
+HTML5     → HTML
+CSS3      → CSS
+NodeJS    → Node.js
+Mongo DB  → MongoDB
